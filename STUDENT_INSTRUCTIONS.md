@@ -2,43 +2,17 @@
 
 ## 🔐 Your Login Credentials
 
-### Student 1
-```
-SSH Command: ssh oscpuser1@155.138.197.128
-Username: oscpuser1
-Password: OscpLab1!2024
-Your Kali IP: 172.16.0.11
-```
+Your instructor will provide you with:
+- Your username (oscpuser1, oscpuser2, oscpuser3, or oscpuser4)
+- Your password
+- The server IP address
+- Your assigned Kali IP address
 
-### Student 2
-```
-SSH Command: ssh oscpuser2@155.138.197.128
-Username: oscpuser2
-Password: OscpLab2!2024
-Your Kali IP: 172.16.0.12
-```
-
-### Student 3
-```
-SSH Command: ssh oscpuser3@155.138.197.128
-Username: oscpuser3
-Password: OscpLab3!2024
-Your Kali IP: 172.16.0.13
-```
-
-### Student 4
-```
-SSH Command: ssh oscpuser4@155.138.197.128
-Username: oscpuser4
-Password: OscpLab4!2024
-Your Kali IP: 172.16.0.14
-```
-
-## 🖥️ Server Information
-- **Server IP:** 155.138.197.128
-- **Platform:** Vultr Cloud
-- **Location:** Your configured region
-- **Network:** 172.16.0.0/24 (shared lab network)
+## 🖥️ Lab Environment Information
+- **Platform:** Cloud-based Linux server
+- **Network:** 172.16.0.0/24 (isolated lab network)
+- **Your Kali Container:** Individual isolated environment
+- **Shared Targets:** All students practice on the same target machines
 
 ---
 

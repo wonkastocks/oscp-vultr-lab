@@ -1,0 +1,23 @@
+# Private files - do not commit
+USER_CREDENTIALS.txt
+PRIVATE_*.md
+*credentials*
+*password*
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
