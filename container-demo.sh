@@ -100,8 +100,8 @@ success "Network tools installed"
 apt install -y smbclient ftp default-mysql-client redis-tools postgresql-client > /dev/null 2>&1
 success "Service clients installed"
 
-apt install -y sshpass hydra gobuster sqlmap python3 python3-pip > /dev/null 2>&1
-success "Exploitation tools installed"
+apt install -y sshpass hydra gobuster sqlmap python3 python3-pip enum4linux whatweb > /dev/null 2>&1
+success "Exploitation and enumeration tools installed"
 
 success "All tools ready for exploitation!"
 
@@ -118,16 +118,75 @@ run_command "ip addr show eth0 | grep 'inet '"
 run_command "nmap -sn 172.16.0.0/24 | grep 'Nmap scan report' | wc -l"
 echo "14 hosts discovered"
 
-run_command "nmap -sS -p22,21,80,3306,139,445,8080,6379,5432 172.16.0.20-110 --open | grep open"
-
-success "All services identified and documented"
+success "Network discovery complete - 14 hosts found"
 sleep $MEDIUM_PAUSE
+
+# ═══════════════════════════════════════════════════════════════
+# ENUMERATION PHASE
+# ═══════════════════════════════════════════════════════════════
+
+show_section "PHASE 2: COMPREHENSIVE ATTACK SURFACE ENUMERATION"
+
+explain "Now we enumerate EVERY service to understand our attack surface.
+         This is CRITICAL - spend 80% of your time on enumeration!"
+
+echo -e "${YELLOW}Step 1: Full TCP Port Scan (All 65535 ports)${NC}"
+run_command "nmap -p- --min-rate=1000 172.16.0.20-110 --open | grep -E 'Nmap scan|open'"
+
+echo -e "${YELLOW}Step 2: Service Version Detection & Banner Grabbing${NC}"
+explain "Getting exact versions helps find specific exploits"
+
+run_command "nmap -sV -sC -p22 172.16.0.20 | grep -E 'PORT|22/tcp|SSH-2.0'"
+
+run_command "nmap -sV -sC -p80 172.16.0.30 | grep -E 'PORT|80/tcp|Apache|PHP'"
+
+run_command "nmap -sV -sC -p21 172.16.0.40 | grep -E 'PORT|21/tcp|220|ftp-anon'"
+
+run_command "nmap -sV -sC -p3306 172.16.0.50 | grep -E 'PORT|3306/tcp|MySQL|mysql'"
+
+run_command "nmap -sV -sC -p139,445 172.16.0.60 | grep -E 'PORT|139/tcp|445/tcp|Samba'"
+
+echo -e "${YELLOW}Step 3: Operating System Detection${NC}"
+run_command "nmap -O 172.16.0.20,172.16.0.30,172.16.0.40 | grep -E 'Running:|OS details' | head -5"
+
+echo -e "${YELLOW}Step 4: Banner Grabbing with Netcat${NC}"
+explain "Manual banner grabbing reveals additional information"
+
+echo -e "${CYAN}SSH Banner:${NC}"
+run_command "echo 'quit' | nc -nv -w 2 172.16.0.20 22 2>&1 | head -2"
+
+echo -e "${CYAN}FTP Banner:${NC}"
+run_command "echo 'quit' | nc -nv -w 2 172.16.0.40 21 2>&1 | head -2"
+
+echo -e "${CYAN}HTTP Headers:${NC}"
+run_command "curl -I http://172.16.0.30 2>/dev/null | head -5"
+
+echo -e "${CYAN}MySQL Banner:${NC}"
+run_command "nmap --script mysql-info -p3306 172.16.0.50 | grep -E 'Version:|Salt:' | head -3"
+
+echo -e "${YELLOW}Step 5: Vulnerability Scanning${NC}"
+explain "Check for known vulnerabilities before exploitation"
+
+run_command "nmap --script vuln -p22 172.16.0.20 | grep -E 'VULNERABLE|State:' | head -3"
+
+run_command "nmap --script http-enum -p80 172.16.0.30 | grep '|_' | head -5"
+
+echo -e "${YELLOW}Step 6: SMB Enumeration${NC}"
+run_command "enum4linux -a 172.16.0.60 2>&1 | grep -E 'Share|Mapping|Group' | head -10"
+
+echo -e "${YELLOW}Step 7: Web Application Fingerprinting${NC}"
+run_command "whatweb http://172.16.0.30 2>&1 | grep -E 'Apache|PHP|Title' || echo 'Web technologies identified'"
+
+run_command "curl -s http://172.16.0.30/robots.txt 2>&1 | head -5 || echo 'No robots.txt found'"
+
+success "Complete attack surface enumerated - ready for exploitation!"
+sleep $LONG_PAUSE
 
 # ═══════════════════════════════════════════════════════════════
 # TARGET 1: SSH SERVER (172.16.0.20)
 # ═══════════════════════════════════════════════════════════════
 
-show_section "TARGET 1: SSH SERVER (172.16.0.20) - FULL COMPROMISE"
+show_section "PHASE 3: EXPLOITATION - TARGET 1: SSH SERVER (172.16.0.20)"
 
 explain "Testing SSH access with common credentials"
 
