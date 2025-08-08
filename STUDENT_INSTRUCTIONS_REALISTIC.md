@@ -27,6 +27,97 @@ Your instructor will provide you with:
 
 ---
 
+## 🛠️ Required Tools Installation
+
+### IMPORTANT: Install These Tools FIRST!
+Once you're in your Kali container, you MUST install these tools before starting the labs:
+
+```bash
+# Step 1: Update package lists
+apt update
+
+# Step 2: Install essential tools (REQUIRED)
+apt install -y \
+    nmap \
+    netcat-traditional \
+    curl \
+    wget \
+    git \
+    vim \
+    net-tools \
+    iputils-ping \
+    dnsutils
+
+# Step 3: Install scanning and enumeration tools
+apt install -y \
+    gobuster \
+    dirb \
+    dirbuster \
+    nikto \
+    enum4linux \
+    smbclient \
+    smbmap \
+    ftp \
+    telnet
+
+# Step 4: Install exploitation tools
+apt install -y \
+    hydra \
+    john \
+    hashcat \
+    sqlmap \
+    metasploit-framework \
+    exploitdb \
+    searchsploit
+
+# Step 5: Install web application tools
+apt install -y \
+    wfuzz \
+    ffuf \
+    burpsuite \
+    zaproxy \
+    wpscan
+
+# Step 6: Install database clients
+apt install -y \
+    mysql-client \
+    postgresql-client \
+    redis-tools \
+    mongodb-clients
+
+# Step 7: Install additional useful tools
+apt install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    tmux \
+    screen \
+    socat \
+    proxychains \
+    tcpdump \
+    wireshark
+
+# Step 8: Install Python tools via pip
+pip3 install \
+    impacket \
+    bloodhound \
+    crackmapexec \
+    ldapdomaindump
+```
+
+### Quick One-Liner Installation (Copy & Paste This):
+```bash
+apt update && apt install -y nmap netcat-traditional curl wget git vim net-tools iputils-ping dnsutils gobuster dirb nikto enum4linux smbclient smbmap ftp telnet hydra john hashcat sqlmap metasploit-framework exploitdb wfuzz ffuf wpscan mysql-client postgresql-client redis-tools python3 python3-pip tmux screen socat proxychains tcpdump
+```
+
+### Verify Installation:
+```bash
+# Check critical tools are installed
+which nmap gobuster hydra sqlmap msfconsole
+```
+
+---
+
 ## Getting Started
 
 ### Step 1: Connect to the Server
@@ -41,10 +132,22 @@ ssh oscpuser[YOUR_NUMBER]@155.138.197.128
 # You're now in your Kali container!
 ```
 
-### Step 3: Install Required Tools
+### Step 3: Install Tools (SEE ABOVE)
 ```bash
-apt update
-apt install -y nmap netcat-traditional curl gobuster hydra smbclient enum4linux metasploit-framework sqlmap wfuzz nikto
+# Run the installation commands from the "Required Tools Installation" section above
+# This will take 5-10 minutes - be patient!
+```
+
+### Step 4: Verify Everything Works
+```bash
+# Test network connectivity
+ping 172.16.0.20
+
+# Test nmap
+nmap --version
+
+# Test metasploit
+msfconsole -v
 ```
 
 ---
@@ -368,12 +471,77 @@ ping 172.16.0.20
 apt update && apt install -y [tool-name]
 ```
 
+### Tool not found?
+```bash
+# Search for the package
+apt search [tool-name]
+
+# Install if found
+apt install -y [package-name]
+```
+
 ### Need to reset?
 ```bash
 exit  # Exit Kali
 exit  # Exit SSH
 # Reconnect and start fresh
 ```
+
+---
+
+## 📚 Tool Reference Guide
+
+### Essential Tools & Their Purpose
+
+| Tool | Purpose | Example Usage |
+|------|---------|--------------|
+| **nmap** | Network/port scanning | `nmap -sV -sC 172.16.0.20` |
+| **gobuster** | Directory/file enumeration | `gobuster dir -u http://172.16.0.30 -w /usr/share/wordlists/dirb/common.txt` |
+| **hydra** | Password brute forcing | `hydra -l admin -P pass.txt ssh://172.16.0.20` |
+| **sqlmap** | SQL injection automation | `sqlmap -u "http://172.16.0.30/page?id=1" --dump` |
+| **metasploit** | Exploitation framework | `msfconsole` then `search [vulnerability]` |
+| **nikto** | Web vulnerability scanner | `nikto -h http://172.16.0.30` |
+| **enum4linux** | SMB enumeration | `enum4linux -a 172.16.0.60` |
+| **smbclient** | SMB share access | `smbclient //172.16.0.60/share -N` |
+| **wpscan** | WordPress scanner | `wpscan --url http://172.16.0.100` |
+| **wfuzz** | Web fuzzing | `wfuzz -c -z file,wordlist.txt http://172.16.0.30/FUZZ` |
+| **john** | Password hash cracking | `john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt` |
+| **hashcat** | Advanced hash cracking | `hashcat -m 0 hash.txt wordlist.txt` |
+| **searchsploit** | Exploit database search | `searchsploit apache 2.4` |
+| **redis-cli** | Redis client | `redis-cli -h 172.16.0.80` |
+| **mysql** | MySQL client | `mysql -h 172.16.0.50 -u root -p` |
+| **psql** | PostgreSQL client | `psql -h 172.16.0.90 -U postgres` |
+| **netcat** | Network utility/shells | `nc -lvnp 4444` |
+| **tmux** | Terminal multiplexer | `tmux new -s session` |
+| **impacket** | Windows attack tools | `impacket-smbexec` |
+
+### Wordlist Locations
+```bash
+/usr/share/wordlists/rockyou.txt       # Common passwords
+/usr/share/wordlists/dirb/common.txt   # Common directories
+/usr/share/wordlists/dirbuster/        # More directories
+/usr/share/seclists/                   # SecLists (if installed)
+```
+
+### Useful Aliases to Add
+```bash
+# Add these to ~/.bashrc for shortcuts
+echo "alias ll='ls -la'" >> ~/.bashrc
+echo "alias ports='netstat -tulan'" >> ~/.bashrc
+echo "alias myip='ip addr show eth0'" >> ~/.bashrc
+echo "alias scan='nmap -sV -sC'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
+## 🎓 Remember
+
+1. **Install tools BEFORE starting labs** - This saves time and frustration
+2. **Use tmux or screen** - Don't lose your work if connection drops
+3. **Take screenshots** - Evidence for your practice report
+4. **Document everything** - Commands, outputs, successes, failures
+5. **Practice methodology** - Enumerate → Exploit → Escalate → Document
 
 ---
 
