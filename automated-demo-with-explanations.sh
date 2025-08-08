@@ -3,8 +3,22 @@
 # OSCP Lab Automated Demonstration with Educational Commentary
 # This script performs REAL scans and exploits with explanations
 # Perfect for demonstrating to students before they try manually
+# MUST BE RUN AS ROOT
 
 set +e  # Continue even if commands fail (for demo purposes)
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+    echo ""
+    echo "❌ ERROR: This demo must be run as root!"
+    echo ""
+    echo "Please run one of these:"
+    echo "  • sudo ./automated-demo-with-explanations.sh"
+    echo "  • su -c './automated-demo-with-explanations.sh'"
+    echo "  • Login as root first, then run the script"
+    echo ""
+    exit 1
+fi
 
 # Colors for better visibility
 GREEN='\033[0;32m'
