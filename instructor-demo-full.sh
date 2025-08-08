@@ -142,12 +142,19 @@ show_section "PREPARATION: INSTALLING ALL REQUIRED TOOLS"
 
 explain "Installing complete toolkit for full exploitation"
 
-run_command "apt update 2>&1 | tail -3"
-run_command "apt install -y nmap netcat-traditional smbclient ftp mysql-client redis-tools sshpass hydra curl wget gobuster sqlmap default-mysql-client postgresql-client 2>&1 | grep -E 'Setting|installed' | tail -5"
-run_command "apt install -y python3 python3-pip 2>&1 | grep -E 'Setting|installed' | tail -2"
+echo -e "${YELLOW}Updating package lists...${NC}"
+apt update > /dev/null 2>&1
+success "Package lists updated"
 
-# Install sshpass if it failed
-run_command "which sshpass || apt install -y sshpass"
+echo -e "${YELLOW}Installing penetration testing tools...${NC}"
+apt install -y nmap netcat-traditional curl wget net-tools iputils-ping > /dev/null 2>&1
+success "Network tools installed"
+
+apt install -y smbclient ftp default-mysql-client redis-tools postgresql-client > /dev/null 2>&1
+success "Service clients installed"
+
+apt install -y sshpass hydra gobuster sqlmap python3 python3-pip > /dev/null 2>&1
+success "Exploitation tools installed"
 
 success "All tools installed successfully"
 
