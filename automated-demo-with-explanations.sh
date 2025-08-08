@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# OSCP Lab Automated Demonstration with Educational Commentary
+# OSCP Lab Automated Demonstration with Educational Commentary  
 # This script performs REAL scans and exploits with explanations
 # Perfect for demonstrating to students before they try manually
-# MUST BE RUN AS ROOT
+# RESTRICTED: Only runs from /root/ directory by root user
 
 set +e  # Continue even if commands fail (for demo purposes)
 
@@ -12,10 +12,33 @@ if [ "$EUID" -ne 0 ]; then
     echo ""
     echo "❌ ERROR: This demo must be run as root!"
     echo ""
-    echo "Please run one of these:"
-    echo "  • sudo ./automated-demo-with-explanations.sh"
-    echo "  • su -c './automated-demo-with-explanations.sh'"
-    echo "  • Login as root first, then run the script"
+    echo "This is an instructor-only demonstration."
+    echo ""
+    exit 1
+fi
+
+# Check if running from /root directory
+CURRENT_DIR=$(pwd)
+if [[ "$CURRENT_DIR" != "/root" && "$CURRENT_DIR" != "/root/"* ]]; then
+    echo ""
+    echo "❌ ERROR: This demo must be run from /root/ directory!"
+    echo ""
+    echo "Current directory: $CURRENT_DIR"
+    echo "Required: /root/"
+    echo ""
+    echo "This is an instructor-only demonstration that must be run by"
+    echo "the root user from the /root directory on the main server."
+    echo ""
+    exit 1
+fi
+
+# Check if we're inside a Docker container (students shouldn't run this)
+if [ -f /.dockerenv ]; then
+    echo ""
+    echo "❌ ERROR: This demo cannot be run from inside a container!"
+    echo ""
+    echo "This is an instructor-only demonstration."
+    echo "Please run this from the main server as root user."
     echo ""
     exit 1
 fi
