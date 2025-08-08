@@ -176,7 +176,8 @@ echo -e "${GREEN}[VERSION DETECTED]:${NC} Samba smbd 4.7.6-Ubuntu"
 sleep $SHORT_PAUSE
 
 echo -e "${YELLOW}Step 3: Operating System Detection${NC}"
-run_command "nmap -O 172.16.0.20,172.16.0.30,172.16.0.40 | grep -E 'Running:|OS details' | head -5"
+explain_command "-O detects operating system - requires root privileges, scanning multiple hosts"
+run_command "nmap -O 172.16.0.20 172.16.0.30 172.16.0.40 2>/dev/null | grep -E 'Running:|OS details' | head -5 || echo 'OS detection requires root privileges'"
 
 echo -e "${YELLOW}Step 4: Banner Grabbing with Netcat${NC}"
 explain "Manual banner grabbing reveals additional information"
