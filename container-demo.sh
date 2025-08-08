@@ -94,7 +94,7 @@ apt update > /dev/null 2>&1
 success "Package lists updated"
 
 echo -e "${YELLOW}Installing penetration testing tools...${NC}"
-apt install -y nmap netcat-traditional curl wget net-tools iputils-ping > /dev/null 2>&1
+apt install -y nmap netcat-traditional curl wget net-tools iputils-ping iproute2 > /dev/null 2>&1
 success "Network tools installed"
 
 apt install -y smbclient ftp default-mysql-client redis-tools postgresql-client > /dev/null 2>&1
